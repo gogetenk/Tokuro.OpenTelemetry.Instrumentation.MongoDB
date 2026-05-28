@@ -1,0 +1,52 @@
+name: Feature request
+description: Propose a new feature or behavior change
+title: "feat: <short description>"
+labels: ["enhancement", "needs-design"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for behavior changes and new public API. For questions, use Discussions.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real-world situation is not handled well today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: API shape, defaults, behavior. Be concrete.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else did you try, and why is it insufficient?
+
+  - type: input
+    id: semconv
+    attributes:
+      label: OTel semantic-convention reference
+      description: Link to the relevant section of the OTel DB sem-conv spec, if applicable.
+      placeholder: "https://opentelemetry.io/docs/specs/semconv/database/"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Workload shape, scale, deployment topology — anything that helps assess scope.
+
+  - type: checkboxes
+    id: coc
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I agree to follow this project's [Code of Conduct](../CODE_OF_CONDUCT.md).
+          required: true

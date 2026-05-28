@@ -1,0 +1,81 @@
+name: Bug report
+description: Report a defect in Tokuro.OpenTelemetry.Instrumentation.MongoDB
+title: "bug: <short description>"
+labels: ["bug", "needs-repro"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill in as much as you can — issues without a repro are closed as `needs-repro`.
+
+  - type: input
+    id: package-version
+    attributes:
+      label: Package version
+      description: Version of `Tokuro.OpenTelemetry.Instrumentation.MongoDB`
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: dotnet-version
+    attributes:
+      label: .NET version
+      description: Output of `dotnet --version`
+      placeholder: "8.0.404"
+    validations:
+      required: true
+
+  - type: input
+    id: mongo-driver-version
+    attributes:
+      label: MongoDB.Driver version
+      placeholder: "3.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: otel-sdk-version
+    attributes:
+      label: OpenTelemetry SDK version
+      placeholder: "1.9.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Minimal code or sequence of operations. A failing test is ideal.
+      render: csharp
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: span
+    attributes:
+      label: Span output snippet
+      description: The relevant span(s) as JSON or your exporter's debug output. Redact anything sensitive.
+      render: json
+
+  - type: checkboxes
+    id: coc
+    attributes:
+      label: Code of Conduct
+      options:
+        - label: I agree to follow this project's [Code of Conduct](../CODE_OF_CONDUCT.md).
+          required: true

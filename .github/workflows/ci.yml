@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    name: build & test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for MinVer
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: >
+          dotnet build
+          --configuration Release
+          --no-restore
+          -p:ContinuousIntegrationBuild=true
+          -p:Deterministic=true
+
+      - name: Test (unit only)
+        run: >
+          dotnet test
+          --configuration Release
+          --no-build
+          --filter "Category!=Integration"
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+
+      - name: Test (integration, Linux only)
+        if: runner.os == 'Linux'
+        run: >
+          dotnet test
+          --configuration Release
+          --no-build
+          --filter "Category=Integration"
+          --logger "trx;LogFileName=integration-results.trx"
+          --results-directory ./TestResults
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: ./TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn
+
+      - name: Pack (dry run)
+        run: >
+          dotnet pack
+          --configuration Release
+          --no-build
+          --output ./artifacts
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg-${{ matrix.os }}
+          path: |
+            ./artifacts/*.nupkg
+            ./artifacts/*.snupkg
+          if-no-files-found: error

@@ -1,0 +1,139 @@
+root = true
+
+###############################
+# Core EditorConfig
+###############################
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{yml,yaml,json,csproj,props,targets,config,xml}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+###############################
+# C# code style
+###############################
+[*.cs]
+indent_size = 4
+
+# Modern C# features
+csharp_style_namespace_declarations = file_scoped:error
+csharp_prefer_simple_using_statement = true:suggestion
+csharp_style_prefer_primary_constructors = true:suggestion
+csharp_style_prefer_top_level_statements = true:suggestion
+
+# 'var' preferences — prefer var everywhere
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+# Expression-bodied members
+csharp_style_expression_bodied_methods = when_on_single_line:suggestion
+csharp_style_expression_bodied_properties = true:suggestion
+csharp_style_expression_bodied_accessors = true:suggestion
+
+# Pattern matching
+csharp_style_pattern_matching_over_is_with_cast_check = true:suggestion
+csharp_style_pattern_matching_over_as_with_null_check = true:suggestion
+csharp_style_prefer_switch_expression = true:suggestion
+csharp_style_prefer_pattern_matching = true:suggestion
+csharp_style_prefer_not_pattern = true:suggestion
+
+# Null checking
+csharp_style_throw_expression = true:suggestion
+csharp_style_conditional_delegate_call = true:suggestion
+
+# 'using' organization
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:warning
+
+# Brace style
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+
+###############################
+# Naming conventions
+###############################
+
+# Private fields: _camelCase
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel_case
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_symbols.private_fields.required_modifiers =
+
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+# Constants: PascalCase
+dotnet_naming_rule.constants_pascal_case.severity = warning
+dotnet_naming_rule.constants_pascal_case.symbols = constants
+dotnet_naming_rule.constants_pascal_case.style = pascal_case
+
+dotnet_naming_symbols.constants.applicable_kinds = field
+dotnet_naming_symbols.constants.applicable_accessibilities = *
+dotnet_naming_symbols.constants.required_modifiers = const
+
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+# Public members: PascalCase
+dotnet_naming_rule.public_members_pascal_case.severity = warning
+dotnet_naming_rule.public_members_pascal_case.symbols = public_members
+dotnet_naming_rule.public_members_pascal_case.style = pascal_case
+
+dotnet_naming_symbols.public_members.applicable_kinds = property,method,field,event,delegate
+dotnet_naming_symbols.public_members.applicable_accessibilities = public,internal,protected,protected_internal
+
+# Interfaces: IPascalCase
+dotnet_naming_rule.interfaces_prefixed_i.severity = warning
+dotnet_naming_rule.interfaces_prefixed_i.symbols = interfaces
+dotnet_naming_rule.interfaces_prefixed_i.style = prefixed_i
+
+dotnet_naming_symbols.interfaces.applicable_kinds = interface
+dotnet_naming_symbols.interfaces.applicable_accessibilities = *
+
+dotnet_naming_style.prefixed_i.required_prefix = I
+dotnet_naming_style.prefixed_i.capitalization = pascal_case
+
+# Type parameters: TPascalCase
+dotnet_naming_rule.type_parameters_prefixed_t.severity = warning
+dotnet_naming_rule.type_parameters_prefixed_t.symbols = type_parameters
+dotnet_naming_rule.type_parameters_prefixed_t.style = prefixed_t
+
+dotnet_naming_symbols.type_parameters.applicable_kinds = type_parameter
+
+dotnet_naming_style.prefixed_t.required_prefix = T
+dotnet_naming_style.prefixed_t.capitalization = pascal_case
+
+###############################
+# Analyzer rules
+###############################
+
+# Use file-scoped namespace
+dotnet_diagnostic.IDE0161.severity = error
+
+# Prefer conditional expression for assignments / returns
+dotnet_diagnostic.IDE0045.severity = warning
+dotnet_diagnostic.IDE0046.severity = warning
+
+# Seal internal types
+dotnet_diagnostic.CA1852.severity = warning
+
+# Common quality bumps
+dotnet_diagnostic.CA1822.severity = warning
+dotnet_diagnostic.CA2007.severity = none
+
+# Doc comments: don't fail on missing XML docs for non-public members
+dotnet_diagnostic.CS1591.severity = suggestion

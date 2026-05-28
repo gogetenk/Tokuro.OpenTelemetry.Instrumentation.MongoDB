@@ -1,0 +1,12 @@
+# Funding configuration for this repository.
+# Uncomment and fill in any of the lines below to enable a sponsor button.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# github: [<OWNER>]
+# ko_fi: <username>
+# buy_me_a_coffee: <username>
+# liberapay: <username>
+# patreon: <username>
+# open_collective: <slug>
+# tidelift: nuget/Tokuro.OpenTelemetry.Instrumentation.MongoDB
+# custom: ["https://example.com/donate"]
