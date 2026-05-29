@@ -10,7 +10,7 @@ namespace Tokuro.OpenTelemetry.Instrumentation.MongoDB;
 /// command instrumentation. Registering the instrumentation only subscribes the
 /// tracer provider to the <see cref="ActivitySourceName"/> activity source — the
 /// actual wiring into a <c>MongoClient</c> happens at client construction time via
-/// <see cref="MongoClientSettingsExtensions.AddOpenTelemetryInstrumentation"/>.
+/// <see cref="MongoClientSettingsExtensions"/>.<c>AddOpenTelemetryInstrumentation</c>.
 /// </summary>
 public static class TracerProviderBuilderExtensions
 {
@@ -27,9 +27,8 @@ public static class TracerProviderBuilderExtensions
     /// <para>
     /// This method registers the OpenTelemetry <see cref="System.Diagnostics.ActivitySource"/>
     /// only. Configure instrumentation options (redaction, exception-message suppression,
-    /// max in-flight commands, etc.) on
-    /// <see cref="MongoClientSettingsExtensions.AddOpenTelemetryInstrumentation"/> at the
-    /// call site that constructs your <c>MongoClient</c>. Options passed to a tracer-provider
+    /// max in-flight commands, etc.) via <see cref="MongoClientSettingsExtensions"/>.<c>AddOpenTelemetryInstrumentation</c>
+    /// at the call site that constructs your <c>MongoClient</c>. Options passed to a tracer-provider
     /// extension would have no way to reach the driver-level event subscriber and so are
     /// intentionally not accepted here.
     /// </para>

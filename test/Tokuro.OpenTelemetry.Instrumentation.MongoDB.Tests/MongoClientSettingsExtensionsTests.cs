@@ -36,4 +36,32 @@ public sealed class MongoClientSettingsExtensionsTests
         settings.ClusterConfigurator!(builder);
         existingInvoked.Should().BeTrue("the previously attached configurator must still be invoked");
     }
+
+    [Fact]
+    public void AddOpenTelemetryInstrumentation_WithConfigureCallback_AttachesConfiguratorAndAppliesOptions()
+    {
+        var settings = new MongoClientSettings();
+        var captured = new MongoDBInstrumentationOptions();
+
+        settings.AddOpenTelemetryInstrumentation(options =>
+        {
+            options.CaptureCommandText = false;
+            options.MaxCommandTextLength = 1_234;
+            captured = options;
+        });
+
+        settings.ClusterConfigurator.Should().NotBeNull();
+        captured.CaptureCommandText.Should().BeFalse();
+        captured.MaxCommandTextLength.Should().Be(1_234);
+    }
+
+    [Fact]
+    public void AddOpenTelemetryInstrumentation_WithNullConfigureCallback_Throws()
+    {
+        var settings = new MongoClientSettings();
+
+        var act = () => settings.AddOpenTelemetryInstrumentation((Action<MongoDBInstrumentationOptions>)null!);
+
+        act.Should().Throw<ArgumentNullException>();
+    }
 }

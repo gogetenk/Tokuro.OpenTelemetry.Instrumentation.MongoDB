@@ -12,8 +12,6 @@ namespace Tokuro.OpenTelemetry.Instrumentation.MongoDB.Tests;
 
 public sealed class MongoCommandTelemetryTests
 {
-    private const string ExceptionMessageTag = "exception.message";
-
     private static MongoCommandEventSubscriber CreateSubscriber(MongoDBInstrumentationOptions options)
     {
         var telemetry = new MongoCommandTelemetry(options);
@@ -191,7 +189,7 @@ public sealed class MongoCommandTelemetryTests
     }
 
     [Fact]
-    public void Failed_RedactsExceptionMessage_WhenSuppressExceptionMessageTrue()
+    public void Failed_SuppressesExceptionEvent_WhenSuppressExceptionMessageTrue()
     {
         using var collector = new ActivityCollector();
         var options = new MongoDBInstrumentationOptions { SuppressExceptionMessage = true };
@@ -201,12 +199,13 @@ public sealed class MongoCommandTelemetryTests
         InvokeFailed(subscriber, CommandEventFactory.Failed());
 
         var activity = collector.Stopped.Should().ContainSingle().Subject;
+        // error.type stays a span attribute; the message-bearing exception event is omitted.
         activity.GetTagItem(SemConv.ErrorType).Should().Be(typeof(InvalidOperationException).FullName);
-        activity.GetTagItem(ExceptionMessageTag).Should().BeNull();
+        activity.Events.Should().BeEmpty();
     }
 
     [Fact]
-    public void Failed_EmitsRawExceptionMessage_WhenSuppressExceptionMessageFalse()
+    public void Failed_EmitsExceptionEventWithMessage_WhenSuppressExceptionMessageFalse()
     {
         using var collector = new ActivityCollector();
         var options = new MongoDBInstrumentationOptions { SuppressExceptionMessage = false };
@@ -218,7 +217,15 @@ public sealed class MongoCommandTelemetryTests
 
         var activity = collector.Stopped.Should().ContainSingle().Subject;
         activity.GetTagItem(SemConv.ErrorType).Should().Be(typeof(InvalidOperationException).FullName);
-        (activity.GetTagItem(ExceptionMessageTag) as string).Should().Be("a specific failure");
+
+        // OTel reports the exception on a span event named "exception", not as a span attribute.
+        activity.GetTagItem(SemConv.ExceptionMessage).Should().BeNull();
+        var exceptionEvent = activity.Events.Should().ContainSingle().Subject;
+        exceptionEvent.Name.Should().Be(SemConv.ExceptionEventName);
+        exceptionEvent.Tags.Should().Contain(new KeyValuePair<string, object?>(
+            SemConv.ExceptionType, typeof(InvalidOperationException).FullName));
+        exceptionEvent.Tags.Should().Contain(new KeyValuePair<string, object?>(
+            SemConv.ExceptionMessage, "a specific failure"));
     }
 
     [Fact]

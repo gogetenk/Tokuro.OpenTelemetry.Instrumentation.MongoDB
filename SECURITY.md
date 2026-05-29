@@ -40,6 +40,12 @@ If the fix requires upstream changes (MongoDB driver, OpenTelemetry SDK), the 30
 
 Reporters are credited in the GitHub Security Advisory and in `CHANGELOG.md` under the `Security` bucket of the fixing release, unless they request anonymity.
 
+## Known limitations of redaction
+
+Redaction replaces every BSON **scalar value** with `"?"`, but **field/key names are preserved verbatim** at every depth (they describe the query shape and are needed for a useful `db.statement` / `db.query.text`). If your schema stores user data *as a field name* — e.g. `{ "preferences": { "john@example.com": { … } } }` — that identifier survives redaction. The same applies to a top-level string field whose key happens to match a command verb (`find`, `count`, …), which is kept as a pass-through collection name.
+
+If your documents use dynamic, user-derived keys, either set `CaptureCommandText = false` or supply a `FilterCommand` predicate to skip the affected commands.
+
 ## Out of scope
 
 - Vulnerabilities in `MongoDB.Driver` itself — report to the [MongoDB driver project](https://jira.mongodb.org/).

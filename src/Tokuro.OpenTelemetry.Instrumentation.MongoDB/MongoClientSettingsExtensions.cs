@@ -40,4 +40,26 @@ public static class MongoClientSettingsExtensions
 
         return settings;
     }
+
+    /// <summary>
+    /// Adds the MongoDB OpenTelemetry instrumentation event subscriber to the supplied
+    /// settings, configuring the instrumentation options through a callback applied to a
+    /// fresh <see cref="MongoDBInstrumentationOptions"/> instance pre-populated with the
+    /// PII-safe defaults.
+    /// </summary>
+    /// <param name="settings">The settings to mutate.</param>
+    /// <param name="configure">Callback invoked to mutate the default options. Required.</param>
+    /// <returns>The same <see cref="MongoClientSettings"/> instance for fluent chaining.</returns>
+    public static MongoClientSettings AddOpenTelemetryInstrumentation(
+        this MongoClientSettings settings,
+        Action<MongoDBInstrumentationOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var options = new MongoDBInstrumentationOptions();
+        configure(options);
+
+        return settings.AddOpenTelemetryInstrumentation(options);
+    }
 }

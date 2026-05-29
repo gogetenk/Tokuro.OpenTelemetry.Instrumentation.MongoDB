@@ -52,7 +52,7 @@ Production-tested gap-fill over `MongoDB.Driver.Core.Extensions.DiagnosticSource
 - **PII-safe redaction by default.** The BSON tree is walked; every scalar becomes `"?"`. Collection names, operators, and structure are preserved. Raw capture is opt-in, not opt-out.
 - **`exception.message` suppressed on failed commands.** MongoDB driver exceptions echo BSON fragments (E11000 duplicate-key errors carry the conflicting document, schema validation surfaces the rejected payload, bulk-write rejects include rows). Off by default.
 - **Dual-write OTel DB semantic conventions.** Emits both legacy (`db.system`, `db.statement`, `db.name`) and stable (`db.system.name`, `db.query.text`, `db.namespace`) attributes during the OTel sem-conv migration window.
-- **Bounded in-flight Activity map.** Struct dictionary key, configurable eviction cap. Upstream uses an unbounded `ConcurrentDictionary<int, Activity>` — a leaky long-running cursor or a flood of unmatched `getMore`s grows the heap forever.
+- **Bounded in-flight Activity map.** Struct dictionary key, configurable cap with drop-new overflow. Upstream uses an unbounded `ConcurrentDictionary<int, Activity>` — a leaky long-running cursor or a flood of unmatched `getMore`s grows the heap forever.
 
 ## Installation
 
@@ -88,8 +88,8 @@ All options live on `MongoDBInstrumentationOptions`, passed to `MongoClientSetti
 | ---------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | `CaptureCommandText`         | `true`                                      | Emit `db.statement` / `db.query.text` with the redacted BSON. Values are always redacted regardless; this flag only controls whether the attribute is attached at all. |
 | `MaxCommandTextLength`       | `4000`                                      | Truncate redacted command text beyond this many chars; suffix `...[truncated]`.                          |
-| `SuppressExceptionMessage`   | `true`                                      | Drop `exception.message` on failed commands; keep `error.type`.                                          |
-| `MaxInFlightCommands`        | `10000`                                     | Defensive upper bound on the in-flight Activity map; on overflow, all in-flight entries are stopped and the map is cleared (not an LRU). |
+| `SuppressExceptionMessage`   | `true`                                      | Omit the `exception` span event (which would carry `exception.type` + `exception.message`) on failed commands; the `error.type` span attribute is always kept. |
+| `MaxInFlightCommands`        | `10000`                                     | Defensive upper bound on the in-flight Activity map; on overflow the **new** command's activity is dropped (stopped, not tracked) while existing in-flight entries are preserved. Each drop emits an `EventSource` counter. |
 | `EmitLegacyAttributes`       | `true`                                      | Emit pre-stable attrs (`db.system`, `db.statement`, `db.name`).                                          |
 | `EmitStableAttributes`       | `true`                                      | Emit stable attrs (`db.system.name`, `db.query.text`, `db.namespace`, `db.operation.name`).              |
 | `FilterCommand`              | `null`                                      | Optional predicate over `CommandStartedEvent`. Return `false` to suppress the span entirely. When `null`, only the built-in handshake/heartbeat list is filtered. |
@@ -122,7 +122,7 @@ flowchart LR
     F --> D
     D --> G{Succeeded or Failed?}
     G -- Succeeded --> H[SetStatus Ok, Stop]
-    G -- Failed    --> I[SetStatus Error, suppress message, Stop]
+    G -- Failed    --> I[SetStatus Error, error.type, optional exception event, Stop]
 ```
 
 The hot path is gated on `Activity.IsAllDataRequested`. Sampled-out commands incur only a dictionary insert + remove and one `Activity` allocation that the runtime can elide under tiered JIT.
@@ -131,7 +131,7 @@ The hot path is gated on `Activity.IsAllDataRequested`. Sampled-out commands inc
 
 - **Aggregation pipelines are redacted structurally only.** Stage operators (`$match`, `$group`, …) are kept; user-supplied values are not. The shape of a pipeline is sometimes itself sensitive — review before enabling `CaptureCommandText` in shared-tenancy databases.
 - **`getMore` cursor continuation is not correlated to the originating `find`.** The driver does not surface a parent request id. Each `getMore` is its own root span by design; correlate via cursor id if needed.
-- **Bounded map overflow is a signal.** When the in-flight map reaches `MaxInFlightCommands`, all currently-tracked activities are stopped and the map is cleared as a defensive cap (not an LRU eviction). A non-zero overflow event means either a misbehaving consumer (unmatched request ids) or a real leak.
+- **Bounded map overflow is a signal.** When the in-flight map reaches `MaxInFlightCommands`, the instrumentation drops the *new* command's activity (stops it without tracking) and preserves the existing in-flight entries, emitting an `EventSource` counter on each drop. A non-zero overflow count means either a misbehaving consumer (unmatched request ids) or a real leak.
 
 ## Performance
 
