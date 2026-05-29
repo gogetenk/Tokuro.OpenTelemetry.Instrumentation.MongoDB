@@ -29,7 +29,7 @@
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
 
     <!-- Bench dependencies -->
-    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
   </ItemGroup>
 
   <ItemGroup>
