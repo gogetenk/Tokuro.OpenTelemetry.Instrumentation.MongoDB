@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 
 ### Changed
 
+- README: local-first onboarding — the quick-start now uses the Console exporter so spans are visible on a first run, lists the required companion packages (`OpenTelemetry.Extensions.Hosting` + an exporter), and adds a "verify locally / flush before exit" note. (Docs only; no code change.)
 - Failed commands now record the exception message (when `SuppressExceptionMessage = false`) on an OTel `exception` span event carrying `exception.type` + `exception.message`, instead of an off-spec `exception.message` span attribute. `error.type` remains a span attribute.
 - Replaced the `FluentAssertions` test dependency with `AwesomeAssertions` (MIT) — FluentAssertions 8+ moved to a paid commercial license. Test-only change; no impact on the shipped package.
 

@@ -12,7 +12,7 @@ OpenTelemetry instrumentation for the official `MongoDB.Driver` (3.x). PII-safe 
 
 Two calls are required: one on the OpenTelemetry tracer provider, one on the `MongoClientSettings` that backs each `MongoClient`. The first tells OpenTelemetry to listen; the second tells MongoDB to emit. Both are required — registering only the tracer side produces zero spans.
 
-**1. Register the `ActivitySource` on your tracer provider** so the OpenTelemetry SDK listens for the instrumentation's spans:
+**1. Register the instrumentation on your tracer provider** so the OpenTelemetry SDK listens for its spans. `AddOpenTelemetry()` comes from the `OpenTelemetry.Extensions.Hosting` package, and you need at least one exporter. The example uses the **Console exporter** so you can *see* spans immediately on a first run — swap it for `.AddOtlpExporter()` once you ship to a collector (Datadog, Tempo, Jaeger…):
 
 ```csharp
 using OpenTelemetry.Trace;
@@ -20,7 +20,7 @@ using OpenTelemetry.Trace;
 builder.Services.AddOpenTelemetry()
     .WithTracing(t => t
         .AddMongoDBInstrumentation()
-        .AddOtlpExporter());
+        .AddConsoleExporter()); // → .AddOtlpExporter() in production
 ```
 
 **2. Wire the subscriber on each `MongoClientSettings`** so the MongoDB driver actually publishes command events. This is where all instrumentation configuration lives:
@@ -43,7 +43,9 @@ var client = new MongoClient(settings);
 
 Every command issued by that `MongoClient` now emits a span with redacted BSON, `db.system.name = "mongodb"`, `db.namespace`, `server.address`, and `server.port`. No connection strings, no document payloads, no exception bodies.
 
-> **Heads-up.** If your service constructs `MongoClient` from DI, you need to plumb the instrumented `MongoClientSettings` through your DI registration. See the sample at `samples/Sample.AspNetCore/Program.cs`.
+> **Verify locally.** Hit an endpoint that touches Mongo and watch the console for `MongoDB <operation> <collection>` spans (e.g. `MongoDB find users`). Spans are written when each command **completes**, so in a short-lived test make sure the provider flushes — call `ForceFlush()` or shut the host down cleanly — otherwise the process can exit before the exporter prints.
+>
+> **From DI.** If you resolve `MongoClient` from the container, plumb the *instrumented* `MongoClientSettings` through your registration — see [`samples/Sample.AspNetCore/Program.cs`](./samples/Sample.AspNetCore/Program.cs).
 
 ## Why this library
 
@@ -58,6 +60,9 @@ Production-tested gap-fill over `MongoDB.Driver.Core.Extensions.DiagnosticSource
 
 ```bash
 dotnet add package Tokuro.OpenTelemetry.Instrumentation.MongoDB
+# companions: the OpenTelemetry host integration + at least one exporter
+dotnet add package OpenTelemetry.Extensions.Hosting
+dotnet add package OpenTelemetry.Exporter.Console   # local; use OpenTelemetry.Exporter.OpenTelemetryProtocol in production
 ```
 
 ## Usage
