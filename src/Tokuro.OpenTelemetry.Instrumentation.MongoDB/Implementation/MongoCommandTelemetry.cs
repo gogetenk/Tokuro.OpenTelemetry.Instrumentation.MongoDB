@@ -13,26 +13,11 @@ using Tokuro.OpenTelemetry.Instrumentation.MongoDB.Internal;
 
 namespace Tokuro.OpenTelemetry.Instrumentation.MongoDB.Implementation;
 
-/// <summary>
-/// Owns the in-flight <see cref="Activity"/> dictionary, the singleton
-/// <see cref="ActivitySource"/>, and the per-event tag-set logic. Translates MongoDB
-/// driver command events into OpenTelemetry spans, dual-writing legacy and stable
-/// database semantic convention attributes.
-/// <para>
-/// Design note: every public event entry point catches and swallows all exceptions.
-/// The MongoDB driver invokes subscribers synchronously on its I/O thread; a throw from
-/// telemetry would crash the driver thread and propagate to user code. Telemetry must
-/// never crash the host.
-/// </para>
-/// </summary>
+// Translates MongoDB driver command events into OpenTelemetry spans. Event entry points
+// swallow all exceptions: the driver invokes subscribers synchronously on its I/O thread,
+// so a throw here would crash that thread and surface in user code.
 internal sealed class MongoCommandTelemetry
 {
-    /// <summary>
-    /// Singleton <see cref="ActivitySource"/> used by every telemetry instance in the
-    /// AppDomain. Created lazily on type load and never disposed — its lifetime is the
-    /// AppDomain itself, which matches the OpenTelemetry guidance for instrumentation
-    /// libraries.
-    /// </summary>
     internal static readonly ActivitySource ActivitySource = new(TracerProviderBuilderExtensions.ActivitySourceName);
 
     private static readonly HashSet<string> _ignoredCommands = new(StringComparer.OrdinalIgnoreCase)
@@ -41,7 +26,6 @@ internal sealed class MongoCommandTelemetry
         "endSessions",
         "hello",
         "isMaster",
-        "ismaster",
         "saslContinue",
         "saslStart",
     };
@@ -51,14 +35,6 @@ internal sealed class MongoCommandTelemetry
     private readonly MongoCommandRedactor _redactor;
     private readonly MongoDBInstrumentationOptions _options;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MongoCommandTelemetry"/> class.
-    /// </summary>
-    /// <param name="options">Effective instrumentation options (non-null).</param>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// Thrown when <see cref="MongoDBInstrumentationOptions.MaxInFlightCommands"/> or
-    /// <see cref="MongoDBInstrumentationOptions.MaxCommandTextLength"/> is less than 1.
-    /// </exception>
     public MongoCommandTelemetry(MongoDBInstrumentationOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -69,14 +45,8 @@ internal sealed class MongoCommandTelemetry
         _redactor = new MongoCommandRedactor(options.MaxCommandTextLength);
     }
 
-    /// <summary>
-    /// Handles a <see cref="CommandStartedEvent"/>: starts a client-kind activity, attaches
-    /// database semantic convention tags (gated on <see cref="Activity.IsAllDataRequested"/>),
-    /// and tracks the activity in the bounded dictionary keyed by connection and request id.
-    /// </summary>
     public void Started(CommandStartedEvent @event)
     {
-        // Telemetry must not crash the driver thread. Swallow all exceptions.
         try
         {
             if (_ignoredCommands.Contains(@event.CommandName))
@@ -104,12 +74,9 @@ internal sealed class MongoCommandTelemetry
                 PopulateTags(activity, @event, collectionName);
             }
 
-            // When ConnectionId is null we cannot build a sound (connection, request) key:
-            // two distinct unknown-connection commands sharing a RequestId would collide on
-            // (-1, requestId) and one would leak. The matching Succeeded/Failed events also
-            // lack ConnectionId in this scenario, so skipping the dictionary insert here is
-            // symmetric (no leak — just no Stop driven by the terminal event). Stop the
-            // activity immediately so it isn't left dangling.
+            // A null ConnectionId cannot form a sound (connection, request) key, and the
+            // matching terminal events lack it too, so the activity could never be stopped.
+            // Stop it now rather than leaking it into the dictionary.
             if (@event.ConnectionId is null)
             {
                 activity.Stop();
@@ -120,14 +87,10 @@ internal sealed class MongoCommandTelemetry
         }
         catch (Exception)
         {
-            // Intentionally swallowed — see class-level design note.
+            // Telemetry must never crash the driver thread.
         }
     }
 
-    /// <summary>
-    /// Handles a <see cref="CommandSucceededEvent"/>: marks the matching activity as
-    /// <see cref="ActivityStatusCode.Ok"/> and stops it.
-    /// </summary>
     public void Succeeded(CommandSucceededEvent @event)
     {
         try
@@ -146,16 +109,10 @@ internal sealed class MongoCommandTelemetry
         }
         catch (Exception)
         {
-            // Intentionally swallowed — see class-level design note.
+            // Telemetry must never crash the driver thread.
         }
     }
 
-    /// <summary>
-    /// Handles a <see cref="CommandFailedEvent"/>: marks the matching activity as
-    /// <see cref="ActivityStatusCode.Error"/> and records the exception type. The exception
-    /// message is suppressed by default because driver failures can echo BSON fragments
-    /// containing user data.
-    /// </summary>
     public void Failed(CommandFailedEvent @event)
     {
         try
@@ -173,21 +130,27 @@ internal sealed class MongoCommandTelemetry
 
             activity.SetStatus(ActivityStatusCode.Error);
 
-            // error.type per OTel sem-conv must be non-empty; FullName can be null for some
-            // generated/dynamic types, so fall back to the short name in that case.
             var failureType = @event.Failure.GetType();
-            activity.SetTag(SemConv.ErrorType, failureType.FullName ?? failureType.Name);
+            var errorTypeName = failureType.FullName ?? failureType.Name;
+            activity.SetTag(SemConv.ErrorType, errorTypeName);
 
+            // OTel reports exception detail on an "exception" span event, not span attributes.
+            // The message is opt-in only, as driver failures can echo BSON fragments.
             if (!_options.SuppressExceptionMessage)
             {
-                activity.SetTag(SemConv.ExceptionMessage, @event.Failure.Message);
+                var exceptionTags = new ActivityTagsCollection
+                {
+                    { SemConv.ExceptionType, errorTypeName },
+                    { SemConv.ExceptionMessage, @event.Failure.Message },
+                };
+                activity.AddEvent(new ActivityEvent(SemConv.ExceptionEventName, tags: exceptionTags));
             }
 
             activity.Stop();
         }
         catch (Exception)
         {
-            // Intentionally swallowed — see class-level design note.
+            // Telemetry must never crash the driver thread.
         }
     }
 
@@ -228,9 +191,8 @@ internal sealed class MongoCommandTelemetry
 
     private void TrackActivity(long connectionId, int requestId, Activity activity)
     {
-        // Drop-new semantics: when the cap is reached we refuse the NEW activity rather than
-        // evicting healthy in-flight spans. Lock-then-recheck closes the TOCTOU window where
-        // multiple threads could otherwise observe count == cap and each attempt eviction.
+        // Drop-new on overflow: refuse the new activity rather than evict healthy in-flight
+        // spans. The lock-then-recheck closes the check-then-act race between threads.
         if (_activities.Count >= _options.MaxInFlightCommands)
         {
             lock (_overflowLock)
@@ -262,12 +224,9 @@ internal sealed class MongoCommandTelemetry
                 activity.SetTag(SemConv.ServerPort, ip.Port);
                 break;
             case UnixDomainSocketEndPoint uds:
-                // UDS deployments have no port; record only the socket path.
                 activity.SetTag(SemConv.ServerAddress, uds.ToString());
                 break;
             default:
-                // Unknown endpoint kind: best-effort string representation as server.address,
-                // no server.port (we cannot infer one safely).
                 activity.SetTag(SemConv.ServerAddress, endpoint.ToString());
                 break;
         }
@@ -283,11 +242,6 @@ internal sealed class MongoCommandTelemetry
             ? value.AsString
             : null;
 
-    /// <summary>
-    /// EventSource that surfaces operational signals from this instrumentation. Consumers
-    /// (PerfView, dotnet-trace, in-process listeners) can subscribe to detect overflow
-    /// conditions such as in-flight cap evictions without depending on logging plumbing.
-    /// </summary>
     [EventSource(Name = "Tokuro-OpenTelemetry-Instrumentation-MongoDB")]
     internal sealed class TelemetryEventSource : EventSource
     {
@@ -297,12 +251,6 @@ internal sealed class MongoCommandTelemetry
         {
         }
 
-        /// <summary>
-        /// Emitted when the in-flight activity cap is hit and a new command activity is
-        /// dropped rather than tracked. The argument is the current in-flight count at the
-        /// moment of the drop.
-        /// </summary>
-        /// <param name="inFlightCount">Current size of the in-flight activity dictionary.</param>
         [Event(1, Level = EventLevel.Warning, Message = "MongoDB instrumentation dropped a new activity; in-flight cap reached ({0}).")]
         public void ActivityEvicted(long inFlightCount) => WriteEvent(1, inFlightCount);
     }

@@ -5,27 +5,18 @@ using MongoDB.Driver.Core.Events;
 
 namespace Tokuro.OpenTelemetry.Instrumentation.MongoDB.Implementation;
 
-/// <summary>
-/// MongoDB driver <see cref="IEventSubscriber"/> that forwards command lifecycle events
-/// (started / succeeded / failed) to a single <see cref="MongoCommandTelemetry"/> instance.
-/// One subscriber per <c>MongoClient</c> — wire it through
-/// <c>MongoClientSettings.ClusterConfigurator</c>.
-/// </summary>
+// Forwards MongoDB driver command lifecycle events to a single telemetry instance.
+// One subscriber per MongoClient, wired through MongoClientSettings.ClusterConfigurator.
 internal sealed class MongoCommandEventSubscriber : IEventSubscriber
 {
     private readonly MongoCommandTelemetry _telemetry;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="MongoCommandEventSubscriber"/> class.
-    /// </summary>
-    /// <param name="telemetry">The telemetry sink that will receive command events.</param>
     public MongoCommandEventSubscriber(MongoCommandTelemetry telemetry)
     {
         ArgumentNullException.ThrowIfNull(telemetry);
         _telemetry = telemetry;
     }
 
-    /// <inheritdoc />
     public bool TryGetEventHandler<TEvent>(out Action<TEvent> handler)
     {
         if (typeof(TEvent) == typeof(CommandStartedEvent))
