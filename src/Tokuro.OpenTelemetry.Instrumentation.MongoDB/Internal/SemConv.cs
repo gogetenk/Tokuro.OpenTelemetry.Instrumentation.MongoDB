@@ -13,6 +13,7 @@ internal static class SemConv
     internal const string DbSystem = "db.system";
     internal const string DbStatement = "db.statement";
     internal const string DbName = "db.name";
+    internal const string DbOperation = "db.operation";
 
     // Stable database attributes (current OTel semantic conventions).
     internal const string DbSystemName = "db.system.name";
@@ -25,13 +26,10 @@ internal static class SemConv
     internal const string ServerAddress = "server.address";
     internal const string ServerPort = "server.port";
 
-    // Error attributes.
+    // Error / exception attributes.
     internal const string ErrorType = "error.type";
-
-    // Vendor-friendly span type tag (some backends key off this for UI categorization).
-    internal const string SpanType = "span.type";
+    internal const string ExceptionMessage = "exception.message";
 
     // Constant values.
     internal const string MongoDbSystem = "mongodb";
-    internal const string MongoDbSpanType = "mongodb";
 }

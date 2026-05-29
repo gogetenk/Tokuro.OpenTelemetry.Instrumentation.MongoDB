@@ -4,11 +4,15 @@ OpenTelemetry instrumentation for the official `MongoDB.Driver` (3.x). PII-safe 
 
 [![NuGet](https://img.shields.io/nuget/v/Tokuro.OpenTelemetry.Instrumentation.MongoDB.svg)](https://www.nuget.org/packages/Tokuro.OpenTelemetry.Instrumentation.MongoDB)
 [![Downloads](https://img.shields.io/nuget/dt/Tokuro.OpenTelemetry.Instrumentation.MongoDB.svg)](https://www.nuget.org/packages/Tokuro.OpenTelemetry.Instrumentation.MongoDB)
-[![Build](https://github.com/<OWNER>/Tokuro.OpenTelemetry.Instrumentation.MongoDB/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/<OWNER>/Tokuro.OpenTelemetry.Instrumentation.MongoDB/actions/workflows/ci.yml)
+[![Build](https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 
 ## Quick example
+
+Two calls are required: one on the OpenTelemetry tracer provider, one on the `MongoClientSettings` that backs each `MongoClient`. The first tells OpenTelemetry to listen; the second tells MongoDB to emit. Both are required — registering only the tracer side produces zero spans.
+
+**1. Register the `ActivitySource` on your tracer provider** so the OpenTelemetry SDK listens for the instrumentation's spans:
 
 ```csharp
 using OpenTelemetry.Trace;
@@ -19,7 +23,27 @@ builder.Services.AddOpenTelemetry()
         .AddOtlpExporter());
 ```
 
-That's it. Every command issued by every `MongoClient` in the process emits a span with redacted BSON, `db.system.name = "mongodb"`, `db.namespace`, `server.address`, and `server.port`. No connection strings, no document payloads, no exception bodies.
+**2. Wire the subscriber on each `MongoClientSettings`** so the MongoDB driver actually publishes command events. This is where all instrumentation configuration lives:
+
+```csharp
+var settings = MongoClientSettings.FromConnectionString(connectionString);
+settings.AddOpenTelemetryInstrumentation(options =>
+{
+    options.CaptureCommandText       = true;
+    options.SuppressExceptionMessage = true;
+    options.MaxCommandTextLength     = 4_000;
+    options.MaxInFlightCommands      = 10_000;
+    options.EmitLegacyAttributes     = true;
+    options.EmitStableAttributes     = true;
+    options.FilterCommand            = e => e.CommandName != "ping";
+});
+
+var client = new MongoClient(settings);
+```
+
+Every command issued by that `MongoClient` now emits a span with redacted BSON, `db.system.name = "mongodb"`, `db.namespace`, `server.address`, and `server.port`. No connection strings, no document payloads, no exception bodies.
+
+> **Heads-up.** If your service constructs `MongoClient` from DI, you need to plumb the instrumented `MongoClientSettings` through your DI registration. See the sample at `samples/Sample.AspNetCore/Program.cs`.
 
 ## Why this library
 
@@ -38,37 +62,19 @@ dotnet add package Tokuro.OpenTelemetry.Instrumentation.MongoDB
 
 ## Usage
 
-### With OpenTelemetry's `TracerProviderBuilder` (recommended)
+### Configuration via object initializer
+
+If you prefer not to use the configure callback, the same options surface accepts an instance:
 
 ```csharp
-builder.Services.AddOpenTelemetry()
-    .WithTracing(t => t
-        .AddMongoDBInstrumentation(options =>
-        {
-            options.CaptureCommandText        = true;
-            options.SuppressExceptionMessage  = true;
-            options.MaxCommandTextLength      = 4_000;
-            options.MaxInFlightCommands       = 10_000;
-            options.EmitLegacyAttributes      = true;
-            options.EmitStableAttributes      = true;
-            options.FilterCommand             = e => e.CommandName != "ping";
-        })
-        .AddOtlpExporter());
+var settings = MongoClientSettings.FromConnectionString(connectionString);
+settings.AddOpenTelemetryInstrumentation(new MongoDBInstrumentationOptions
+{
+    SuppressExceptionMessage = true,
+    MaxCommandTextLength     = 2_000,
+    FilterCommand            = e => e.CommandName != "ping",
+});
 ```
-
-The DI-based registration discovers every `MongoClient` resolved through the container and wires the instrumentation into its `ClusterConfigurator`.
-
-### With manual `MongoClientSettings` construction
-
-If you build `MongoClient` outside DI (legacy code, console apps, tests):
-
-```csharp
-var settings = MongoClientSettings.FromConnectionString(cs);
-settings.AddOpenTelemetryInstrumentation(); // or pass an options lambda
-var client = new MongoClient(settings);
-```
-
-Same instrumentation surface, no DI requirement.
 
 ### Backend interop
 
@@ -76,14 +82,16 @@ Spans are vendor-neutral OTel. Shipping to Datadog via the DD Agent or DDOT, the
 
 ## Configuration
 
+All options live on `MongoDBInstrumentationOptions`, passed to `MongoClientSettings.AddOpenTelemetryInstrumentation`.
+
 | Option                       | Default                                     | Meaning                                                                                                  |
 | ---------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `CaptureCommandText`         | `true`                                      | Emit `db.statement` / `db.query.text` with the redacted BSON.                                            |
-| `SuppressExceptionMessage`   | `true`                                      | Drop `exception.message` on failed commands; keep `error.type`.                                          |
+| `CaptureCommandText`         | `true`                                      | Emit `db.statement` / `db.query.text` with the redacted BSON. Values are always redacted regardless; this flag only controls whether the attribute is attached at all. |
 | `MaxCommandTextLength`       | `4000`                                      | Truncate redacted command text beyond this many chars; suffix `...[truncated]`.                          |
+| `SuppressExceptionMessage`   | `true`                                      | Drop `exception.message` on failed commands; keep `error.type`.                                          |
 | `MaxInFlightCommands`        | `10000`                                     | Defensive upper bound on the in-flight Activity map; on overflow, all in-flight entries are stopped and the map is cleared (not an LRU). |
 | `EmitLegacyAttributes`       | `true`                                      | Emit pre-stable attrs (`db.system`, `db.statement`, `db.name`).                                          |
-| `EmitStableAttributes`       | `true`                                      | Emit stable attrs (`db.system.name`, `db.query.text`, `db.namespace`).                                   |
+| `EmitStableAttributes`       | `true`                                      | Emit stable attrs (`db.system.name`, `db.query.text`, `db.namespace`, `db.operation.name`).              |
 | `FilterCommand`              | `null`                                      | Optional predicate over `CommandStartedEvent`. Return `false` to suppress the span entirely. When `null`, only the built-in handshake/heartbeat list is filtered. |
 
 ## Features comparison
@@ -91,7 +99,7 @@ Spans are vendor-neutral OTel. Shipping to Datadog via the DD Agent or DDOT, the
 | Capability                                  | This library            | `jbogard/MongoDB.Driver.Core.Extensions.DiagnosticSources` v3.0.0 |
 | ------------------------------------------- | ----------------------- | ----------------------------------------------------------------- |
 | BSON redaction default                      | On (scalars → `"?"`)    | Off — raw command captured                                        |
-| Opt-in raw capture                          | Yes (`CaptureCommandText` + explicit unredacted toggle) | Default behavior, no opt-out                          |
+| Opt-in raw capture                          | Yes (`CaptureCommandText` + explicit unredacted toggle) | Always-on raw capture when enabled               |
 | `exception.message` handling                | Suppressed by default   | Recorded raw (leaks BSON fragments)                               |
 | OTel legacy attributes                      | Yes                     | Yes                                                               |
 | OTel stable attributes (`db.system.name` …) | Yes                     | No                                                                |

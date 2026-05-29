@@ -7,41 +7,38 @@ namespace Tokuro.OpenTelemetry.Instrumentation.MongoDB;
 
 /// <summary>
 /// Extension methods on <see cref="TracerProviderBuilder"/> for enabling MongoDB
-/// command instrumentation. Registering the instrumentation only adds the
-/// <see cref="ActivitySourceName"/> to the tracer provider — the actual wiring into a
-/// <c>MongoClient</c> happens at client construction time via
+/// command instrumentation. Registering the instrumentation only subscribes the
+/// tracer provider to the <see cref="ActivitySourceName"/> activity source — the
+/// actual wiring into a <c>MongoClient</c> happens at client construction time via
 /// <see cref="MongoClientSettingsExtensions.AddOpenTelemetryInstrumentation"/>.
 /// </summary>
 public static class TracerProviderBuilderExtensions
 {
     /// <summary>
     /// Name of the <see cref="System.Diagnostics.ActivitySource"/> used by this
-    /// instrumentation. Listeners (including the OpenTelemetry tracer provider) must
-    /// subscribe to this source to receive MongoDB command spans.
+    /// instrumentation. Exposed as a <see langword="public"/> constant so callers may
+    /// subscribe manually via <c>TracerProviderBuilder.AddSource(...)</c> if they prefer.
     /// </summary>
     public const string ActivitySourceName = "Tokuro.OpenTelemetry.Instrumentation.MongoDB";
 
     /// <summary>
     /// Enables MongoDB instrumentation on the supplied <see cref="TracerProviderBuilder"/>
     /// by subscribing to the <see cref="ActivitySourceName"/> activity source.
+    /// <para>
+    /// This method registers the OpenTelemetry <see cref="System.Diagnostics.ActivitySource"/>
+    /// only. Configure instrumentation options (redaction, exception-message suppression,
+    /// max in-flight commands, etc.) on
+    /// <see cref="MongoClientSettingsExtensions.AddOpenTelemetryInstrumentation"/> at the
+    /// call site that constructs your <c>MongoClient</c>. Options passed to a tracer-provider
+    /// extension would have no way to reach the driver-level event subscriber and so are
+    /// intentionally not accepted here.
+    /// </para>
     /// </summary>
     /// <param name="builder">The tracer provider builder to extend.</param>
-    /// <param name="configure">Optional callback to customize the instrumentation options.
-    /// The configured options object is currently consumed at the call site only — to
-    /// affect a specific <c>MongoClient</c>, pass options to
-    /// <see cref="MongoClientSettingsExtensions.AddOpenTelemetryInstrumentation"/>.</param>
     /// <returns>The same <see cref="TracerProviderBuilder"/> for fluent chaining.</returns>
-    public static TracerProviderBuilder AddMongoDBInstrumentation(
-        this TracerProviderBuilder builder,
-        Action<MongoDBInstrumentationOptions>? configure = null)
+    public static TracerProviderBuilder AddMongoDBInstrumentation(this TracerProviderBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
-
-        // Materialize and validate options even if no consumer reads them here; this
-        // surfaces user-side configuration errors early.
-        var options = new MongoDBInstrumentationOptions();
-        configure?.Invoke(options);
-
         return builder.AddSource(ActivitySourceName);
     }
 }

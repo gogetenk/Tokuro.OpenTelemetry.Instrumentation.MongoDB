@@ -65,18 +65,38 @@ public sealed class MongoCommandRedactorTests
     [Fact]
     public void Redact_ShouldTruncateLongCommandText()
     {
-        const int maxLength = 20;
+        // Above the floor (TruncationMarker.Length + 16) so the requested maxLength is honored.
+        const int maxLength = 50;
         var command = new BsonDocument
         {
             { "find", "users" },
-            { "filter", new BsonDocument("field", "value") }
+            { "filter", new BsonDocument("field", "value") },
+            { "additional", new BsonDocument("padding", "to-force-truncation-of-the-output") }
         };
         var redactor = new MongoCommandRedactor(maxLength);
 
         var result = redactor.Redact(command);
 
         result.Should().EndWith(TruncationMarker);
-        result.Length.Should().Be(maxLength + TruncationMarker.Length);
+        // Surrogate-back-off may shave 1 char, so allow [maxLength-1, maxLength] for the slice.
+        result.Length.Should().BeInRange(
+            maxLength - 1 + TruncationMarker.Length,
+            maxLength + TruncationMarker.Length);
+    }
+
+    [Fact]
+    public void Redact_ShouldFloorMaxLengthBelowMarkerPlusSixteen()
+    {
+        // Asking for a maxLength below the floor must NOT produce a string shorter than the
+        // marker; the redactor clamps to TruncationMarker.Length + 16 internally.
+        const int requested = 5;
+        var command = new BsonDocument { { "find", "users-with-a-very-long-suffix-to-force-truncation" } };
+        var redactor = new MongoCommandRedactor(requested);
+
+        var result = redactor.Redact(command);
+
+        result.Should().EndWith(TruncationMarker);
+        result.Length.Should().BeGreaterThanOrEqualTo(TruncationMarker.Length + 16);
     }
 
     [Theory]

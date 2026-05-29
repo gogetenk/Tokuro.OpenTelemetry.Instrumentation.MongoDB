@@ -61,36 +61,37 @@ public sealed class EndToEndTests : IAsyncLifetime
     [Fact]
     public async Task EndToEnd_FailedOperation_DoesNotEmitExceptionMessage_OnlyErrorType()
     {
+        // Arrange.
+        // Note: duplicate-key writes return a successful CommandSucceededEvent with a writeErrors
+        // array in the reply (the driver only then throws MongoWriteException to the caller), so
+        // they never trigger a CommandFailedEvent. To exercise the failure-path tagging we send a
+        // command the server itself rejects at the wire-protocol level; an unknown command name
+        // reliably produces a CommandFailedEvent on every supported Mongo version.
         var exported = new List<Activity>();
         using var tracer = Sdk.CreateTracerProviderBuilder()
-            .AddMongoDBInstrumentation(opts => opts.SuppressExceptionMessage = true)
+            .AddMongoDBInstrumentation()
             .AddInMemoryExporter(exported)
             .Build();
 
         var settings = MongoClientSettings.FromConnectionString(_container.GetConnectionString());
-        settings.AddOpenTelemetryInstrumentation();
+        settings.AddOpenTelemetryInstrumentation(new MongoDBInstrumentationOptions { SuppressExceptionMessage = true });
         var client = new MongoClient(settings);
         var db = client.GetDatabase("itests");
-        var collection = db.GetCollection<BsonDocument>("uniques");
 
-        var indexModel = new CreateIndexModel<BsonDocument>(
-            Builders<BsonDocument>.IndexKeys.Ascending("k"),
-            new CreateIndexOptions { Unique = true });
-        await collection.Indexes.CreateOneAsync(indexModel, cancellationToken: CancellationToken.None);
-        await collection.InsertOneAsync(new BsonDocument("k", "dup"), cancellationToken: CancellationToken.None);
-
-        var act = async () => await collection.InsertOneAsync(new BsonDocument("k", "dup"), cancellationToken: CancellationToken.None);
-        await act.Should().ThrowAsync<MongoWriteException>();
+        // Act.
+        var act = async () => await db.RunCommandAsync<BsonDocument>(
+            new BsonDocument("notARealCommand", 1),
+            cancellationToken: CancellationToken.None);
+        await act.Should().ThrowAsync<MongoCommandException>();
 
         tracer.ForceFlush();
 
+        // Assert.
         var failed = exported.Where(a => a.Status == ActivityStatusCode.Error).ToList();
         failed.Should().NotBeEmpty();
-        failed.Should().AllSatisfy(a =>
-        {
-            a.GetTagItem(SemConv.ErrorType).Should().NotBeNull();
-            a.GetTagItem("exception.message").Should().BeNull();
-        });
+        failed[0].Tags.Should().NotContain(t => t.Key == "exception.message");
+        failed[0].Tags.Should().Contain(t => t.Key == SemConv.ErrorType);
+        failed[0].Status.Should().Be(ActivityStatusCode.Error);
     }
 
     private sealed class SkipException : Exception

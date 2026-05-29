@@ -17,7 +17,7 @@ The table is updated with each minor release.
 
 Use GitHub **private security advisories** on this repository:
 
-<https://github.com/<OWNER>/Tokuro.OpenTelemetry.Instrumentation.MongoDB/security/advisories/new>
+<https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/security/advisories/new>
 
 Include:
 

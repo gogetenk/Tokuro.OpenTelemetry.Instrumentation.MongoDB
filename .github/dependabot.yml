@@ -7,7 +7,7 @@ updates:
       day: "monday"
     open-pull-requests-limit: 5
     reviewers:
-      - "<OWNER>"
+      - "Tokuro"
     labels:
       - "chore"
       - "dependencies"
@@ -22,7 +22,7 @@ updates:
       day: "monday"
     open-pull-requests-limit: 5
     reviewers:
-      - "<OWNER>"
+      - "Tokuro"
     labels:
       - "chore"
       - "ci"

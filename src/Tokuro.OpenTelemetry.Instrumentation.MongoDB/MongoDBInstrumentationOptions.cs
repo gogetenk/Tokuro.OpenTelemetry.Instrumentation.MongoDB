@@ -23,7 +23,8 @@ public sealed class MongoDBInstrumentationOptions
     /// <summary>
     /// Gets or sets the maximum length, in characters, of the redacted command text attached
     /// to a span. Text exceeding this length is truncated and suffixed with a constant marker.
-    /// Defaults to <c>4_000</c>.
+    /// Must be <c>&gt;= 1</c>; values below the internal marker-plus-floor minimum are clamped
+    /// upward by the redactor to keep the truncated string well-formed. Defaults to <c>4_000</c>.
     /// </summary>
     public int MaxCommandTextLength { get; set; } = 4_000;
 
@@ -38,7 +39,10 @@ public sealed class MongoDBInstrumentationOptions
     /// <summary>
     /// Gets or sets the maximum number of in-flight command activities tracked at any time.
     /// Acts as a defensive upper bound to prevent unbounded growth if a terminal driver
-    /// event is ever lost. Defaults to <c>10_000</c>.
+    /// event is ever lost. Must be <c>&gt;= 1</c>. When the cap is reached, NEW commands are
+    /// dropped (their activity is stopped immediately and never tracked); existing in-flight
+    /// activities are preserved. An EventSource counter is emitted on each drop so operators
+    /// can detect the condition. Defaults to <c>10_000</c>.
     /// </summary>
     public int MaxInFlightCommands { get; set; } = 10_000;
 

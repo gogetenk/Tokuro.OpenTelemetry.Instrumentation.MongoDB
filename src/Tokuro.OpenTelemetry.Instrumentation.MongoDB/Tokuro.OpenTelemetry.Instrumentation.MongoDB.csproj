@@ -6,7 +6,7 @@
     <AssemblyName>Tokuro.OpenTelemetry.Instrumentation.MongoDB</AssemblyName>
     <RootNamespace>Tokuro.OpenTelemetry.Instrumentation.MongoDB</RootNamespace>
     <Description>PII-safe OpenTelemetry instrumentation for MongoDB.Driver — redacts BSON command payloads by default, suppresses exception messages, dual-writes legacy + stable OTel database semantic conventions.</Description>
-    <PackageTags>opentelemetry;otel;mongodb;tracing;observability;instrumentation;activitysource</PackageTags>
+    <PackageTags>opentelemetry;otel;mongodb;tracing;observability;instrumentation;activitysource;redaction;pii;gdpr;bson;diagnostics</PackageTags>
     <MinVerTagPrefix>v</MinVerTagPrefix>
     <IsPackable>true</IsPackable>
   </PropertyGroup>

@@ -31,5 +31,5 @@ The format is based on [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.
 - ActivitySource `"Tokuro.OpenTelemetry.Instrumentation.MongoDB"`.
 - Multi-target build for `net8.0`, `net9.0`, `net10.0`.
 
-[Unreleased]: https://github.com/<OWNER>/Tokuro.OpenTelemetry.Instrumentation.MongoDB/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/<OWNER>/Tokuro.OpenTelemetry.Instrumentation.MongoDB/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/releases/tag/v0.1.0

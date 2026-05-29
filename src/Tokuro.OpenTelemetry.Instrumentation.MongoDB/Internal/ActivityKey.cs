@@ -7,6 +7,8 @@ namespace Tokuro.OpenTelemetry.Instrumentation.MongoDB.Internal;
 /// connection that issued it and the driver-assigned request id. Used as the dictionary
 /// key for the bounded in-flight activity map.
 /// </summary>
-/// <param name="ConnectionId">The driver's local connection identifier (<c>-1</c> when unknown).</param>
+/// <param name="ConnectionId">The driver's local connection identifier. Commands with a
+/// null <c>ConnectionId</c> are never tracked (the activity is stopped immediately at the
+/// <c>Started</c> event), so this field is always a real driver-supplied id.</param>
 /// <param name="RequestId">The driver-assigned request identifier for the command.</param>
 internal readonly record struct ActivityKey(long ConnectionId, int RequestId);

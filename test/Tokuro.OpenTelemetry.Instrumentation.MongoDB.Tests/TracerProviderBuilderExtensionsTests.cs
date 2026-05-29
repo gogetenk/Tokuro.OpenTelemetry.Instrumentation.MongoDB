@@ -26,28 +26,20 @@ public sealed class TracerProviderBuilderExtensionsTests
     }
 
     [Fact]
-    public void AddMongoDBInstrumentation_AppliesConfigureCallback()
+    public void MongoDBInstrumentationOptions_Defaults_AreSafe()
     {
-        MongoDBInstrumentationOptions? captured = null;
+        // The configure callback overload was intentionally NOT added to the tracer-provider
+        // extension because options only take effect when consumed by MongoClientSettings
+        // .AddOpenTelemetryInstrumentation. Verify the defaults instead — those are the contract.
+        var defaults = new MongoDBInstrumentationOptions();
 
-        using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddMongoDBInstrumentation(opts =>
-            {
-                opts.CaptureCommandText = false;
-                opts.MaxCommandTextLength = 256;
-                opts.SuppressExceptionMessage = false;
-                opts.EmitLegacyAttributes = false;
-                opts.EmitStableAttributes = true;
-                captured = opts;
-            })
-            .Build();
-
-        captured.Should().NotBeNull();
-        captured!.CaptureCommandText.Should().BeFalse();
-        captured.MaxCommandTextLength.Should().Be(256);
-        captured.SuppressExceptionMessage.Should().BeFalse();
-        captured.EmitLegacyAttributes.Should().BeFalse();
-        captured.EmitStableAttributes.Should().BeTrue();
+        defaults.CaptureCommandText.Should().BeTrue();
+        defaults.MaxCommandTextLength.Should().Be(4_000);
+        defaults.SuppressExceptionMessage.Should().BeTrue();
+        defaults.MaxInFlightCommands.Should().Be(10_000);
+        defaults.EmitLegacyAttributes.Should().BeTrue();
+        defaults.EmitStableAttributes.Should().BeTrue();
+        defaults.FilterCommand.Should().BeNull();
     }
 
     [Fact]
