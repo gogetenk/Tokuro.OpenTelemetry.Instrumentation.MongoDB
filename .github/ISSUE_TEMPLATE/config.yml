@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions & general discussion
-    url: https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/discussions
+    url: https://github.com/gogetenk/Tokuro.OpenTelemetry.Instrumentation.MongoDB/discussions
     about: Ask questions, share use cases, propose ideas before opening an issue.
   - name: Report a security vulnerability
-    url: https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/security/advisories/new
+    url: https://github.com/gogetenk/Tokuro.OpenTelemetry.Instrumentation.MongoDB/security/advisories/new
     about: Do NOT file security issues publicly. See SECURITY.md for the disclosure policy.

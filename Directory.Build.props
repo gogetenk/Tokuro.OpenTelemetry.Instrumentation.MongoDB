@@ -29,8 +29,8 @@
     <Copyright>Copyright (c) 2026 Yannis Tocreau and contributors</Copyright>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageProjectUrl>https://github.com/OWNER/Tokuro.OpenTelemetry.Instrumentation.MongoDB</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/OWNER/Tokuro.OpenTelemetry.Instrumentation.MongoDB</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/gogetenk/Tokuro.OpenTelemetry.Instrumentation.MongoDB</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/gogetenk/Tokuro.OpenTelemetry.Instrumentation.MongoDB</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>opentelemetry;otel;mongodb;tracing;observability;instrumentation</PackageTags>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

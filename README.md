@@ -4,7 +4,7 @@ OpenTelemetry instrumentation for the official `MongoDB.Driver` (3.x). PII-safe 
 
 [![NuGet](https://img.shields.io/nuget/v/Tokuro.OpenTelemetry.Instrumentation.MongoDB.svg)](https://www.nuget.org/packages/Tokuro.OpenTelemetry.Instrumentation.MongoDB)
 [![Downloads](https://img.shields.io/nuget/dt/Tokuro.OpenTelemetry.Instrumentation.MongoDB.svg)](https://www.nuget.org/packages/Tokuro.OpenTelemetry.Instrumentation.MongoDB)
-[![Build](https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Tokuro/Tokuro.OpenTelemetry.Instrumentation.MongoDB/actions/workflows/ci.yml)
+[![Build](https://github.com/gogetenk/Tokuro.OpenTelemetry.Instrumentation.MongoDB/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gogetenk/Tokuro.OpenTelemetry.Instrumentation.MongoDB/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](./LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0%20%7C%209.0%20%7C%2010.0-512BD4)](https://dotnet.microsoft.com/)
 
