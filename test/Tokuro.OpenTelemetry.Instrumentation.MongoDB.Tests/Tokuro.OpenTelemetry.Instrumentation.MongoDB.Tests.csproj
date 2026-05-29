@@ -17,7 +17,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="Testcontainers.MongoDb" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="MongoDB.Driver" />
@@ -27,7 +27,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
-    <Using Include="FluentAssertions" />
+    <Using Include="AwesomeAssertions" />
   </ItemGroup>
 
 </Project>
